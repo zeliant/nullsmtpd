@@ -66,6 +66,9 @@ class NullSMTPDHandler:
         rcpt_tos = envelope.rcpt_tos
         data = envelope.content.decode('utf-8')
 
+        """ 
+        replace this part with downloading of attachment instead
+
         self.logger.info("Incoming mail from {:s}".format(mail_from))
         for recipient in rcpt_tos:
             self.logger.info("Mail received for {:s}".format(recipient))
@@ -78,6 +81,40 @@ class NullSMTPDHandler:
 
             if self.print_messages:
                 self.logger.info(data)
+        """
+
+        """
+        start of modification
+
+        todo: save downloaded file in directory according to date d
+        todo: to handle downloaded file type checking. ignore non JPG type of file
+        """
+        for part in data.walk():
+            
+            if part.get_content_maintype() == 'multipart':
+              continue
+            if part.get('Content-Disposition') is None:
+              continue
+            
+            fileName = part.get_filename()
+            if bool(fileName):
+              filePath = os.path.join(self.mail_dir, fileName)
+            
+            # to add directory by date
+            #if not os.path.isdir(os.path.join(self.mail_dir, recipient)):
+            #    os.mkdir(os.path.join(self.mail_dir, recipient))
+            
+            if not os.path.isfile(filePath) :
+                fp = open(filePath, 'wb')
+                fp.write(part.get_payload(decode=True))
+                fp.close()
+            
+            subject = str(data).split("Subject: ", 1)[1].split("\nTo:", 1)[0]
+            self.logger.info('Downloaded "{file}" from email titled "{subject}".'.format(file=fileName, subject=subject))
+            
+            if self.print_messages:
+                self.logger.info(data)
+        
         return '250 OK'
 
 
