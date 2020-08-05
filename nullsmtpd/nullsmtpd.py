@@ -8,6 +8,7 @@ import argparse
 import asyncio
 import os
 import time
+import email
 
 from aiosmtpd.controller import Controller
 
@@ -62,10 +63,10 @@ class NullSMTPDHandler:
         :return: string status code of server
         """
         # peer = session.peer
-        mail_from = envelope.mail_from
-        rcpt_tos = envelope.rcpt_tos
-        data = envelope.content.decode('utf-8')
-
+        #mail_from = envelope.mail_from
+        #rcpt_tos = envelope.rcpt_tos
+        #data = envelope.content.decode('utf-8')
+        data = email.message_from_string(str(envelope.content,'utf-8'))
         """ 
         replace this part with downloading of attachment instead
 
@@ -86,7 +87,7 @@ class NullSMTPDHandler:
         """
         start of modification
 
-        todo: save downloaded file in directory according to date d
+        todo: save downloaded file in directory according to date
         todo: to handle downloaded file type checking. ignore non JPG type of file
         """
         for part in data.walk():
