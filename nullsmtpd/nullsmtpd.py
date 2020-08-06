@@ -9,14 +9,26 @@ import asyncio
 import os
 import time
 import email
+import sys
 
 from aiosmtpd.controller import Controller
+from aiosmtpd.handlers import Debugging
+from aiosmtpd.smtp import SMTP as Server
 
 from .logger import configure_logging
 from .version import __version__
 
 NULLSMTPD_DIRECTORY = os.path.join(os.path.expanduser("~"), ".nullsmtpd")
 
+class MySMTPServer(Server):
+    async def ehlo_hook(self):
+        sys.stdout.write("EHLO HOOK" + '\n')
+        return '250 HELP'
+
+class MyController(Controller):
+    def factory(self):
+        #return MySMTPServer(self.handler)
+        return Server(self.handler, data_size_limit=33554432, enable_SMTPUTF8=False, decode_data=False, hostname="10.10.10.248", ident=None, tls_context=None, require_starttls=False, timeout=300)
 
 # pylint: disable=too-few-public-methods
 class NullSMTPDHandler:
@@ -48,6 +60,41 @@ class NullSMTPDHandler:
         self.mail_dir = mail_dir
         self.print_messages = output_messages is True
         self.logger.info("Mail Directory: {:s}".format(mail_dir))
+
+    async def handle_HELO(self, server, session, envelope, hostname):
+        
+        self.logger.info('HELO from {:s}'.format(hostname))
+
+        session.host_name = hostname
+
+        return '250 {:s} Hello {:s}'.format("10.10.10.248", hostname)
+    
+    async def handle_EHLO(self, server, session, envelope, hostname):
+        
+        self.logger.info('EHLO from {:s}'.format(hostname))
+
+        session.host_name = hostname
+
+        return """\
+250-PIPELINING
+250-AUTH LOGIN PLAIN
+250-CHUNKING
+250-STARTTLS
+250 HELP"""
+
+    async def handle_MAIL(self, server, session, envelope, address, mail_options):
+        
+        self.logger.info('MAIL FROM')
+
+        envelope.mail_from = address
+
+        return "250 OK"
+
+
+
+    async def handle_RCPT(self, server, session, envelope, address, rcpt_options):
+       envelope.rcpt_tos.append(address)
+       return "250 OK"
 
     # pylint: disable=invalid-name
     async def handle_DATA(self, _, __, envelope):
@@ -113,8 +160,8 @@ class NullSMTPDHandler:
             subject = str(data).split("Subject: ", 1)[1].split("\nTo:", 1)[0]
             self.logger.info('Downloaded "{file}" from email titled "{subject}".'.format(file=fileName, subject=subject))
             
-            if self.print_messages:
-                self.logger.info(data)
+            #if self.print_messages:
+            #    self.logger.info(data)
         
         return '250 OK'
 
@@ -168,7 +215,7 @@ def main():
     )
     loop = asyncio.get_event_loop()
     nullsmtpd = NullSMTPDHandler(logger, mail_dir, output_messages)
-    controller = Controller(nullsmtpd, hostname=host, port=port)
+    controller = MyController(nullsmtpd, hostname=host, port=port)
     controller.start()
 
     try:
