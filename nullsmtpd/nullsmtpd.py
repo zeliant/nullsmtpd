@@ -77,7 +77,6 @@ class NullSMTPDHandler:
 
         return """\
 250-PIPELINING
-250-AUTH LOGIN PLAIN
 250-CHUNKING
 250-STARTTLS
 250 HELP"""
@@ -93,8 +92,10 @@ class NullSMTPDHandler:
 
 
     async def handle_RCPT(self, server, session, envelope, address, rcpt_options):
-       envelope.rcpt_tos.append(address)
-       return "250 OK"
+
+        self.logger.info('RCPT')
+        envelope.rcpt_tos.append(address)
+        return "250 OK"
 
     # pylint: disable=invalid-name
     async def handle_DATA(self, _, __, envelope):
