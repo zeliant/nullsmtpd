@@ -77,6 +77,7 @@ class NullSMTPDHandler:
 
         return """\
 250-PIPELINING
+250-AUTH LOGIN PLAIN
 250-CHUNKING
 250-STARTTLS
 250 HELP"""
@@ -89,7 +90,13 @@ class NullSMTPDHandler:
 
         return "250 OK"
 
+    async def handle_STARTTLS(self, server, session, envelope):
 
+        self.logger.info('STARTTLS')
+
+    async def handle_exception(self, error):
+
+        self.logger.info(error)
 
     async def handle_RCPT(self, server, session, envelope, address, rcpt_options):
 
